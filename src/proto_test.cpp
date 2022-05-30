@@ -21,6 +21,6 @@ int main() {
     raft::AppendEntriesResp appendEntriesResp;
     appendEntriesResp.set_success(false);
     std::cout << "appendEntriesResp: " << (appendEntriesResp.success() ? "true" : "false") << std::endl;
-
+    
     return 0;
 }
