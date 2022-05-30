@@ -9,8 +9,11 @@ Raft 协议
 
 
 ## 参考
+Raft实现
 - https://github.com/wenweihu86/raft-java
 - https://github.com/logcabin/logcabin
+
+C++ 代码规范：https://zh-google-styleguide.readthedocs.io/en/latest/google-cpp-styleguide/
 
 ## 问题记录
 1.编译grpc时报错：c++: fatal error: Killed signal terminated program cc1plus

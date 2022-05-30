@@ -67,3 +67,16 @@ target_link_libraries(proto_test
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
+
+add_executable(raft_consensus_server src/raft_consensus_server.cpp)
+target_link_libraries(raft_consensus_server 
+    raft_grpc_proto
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})
+add_executable(raft_consensus_client src/raft_consensus_client.cpp)
+target_link_libraries(raft_consensus_client 
+    raft_grpc_proto
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})

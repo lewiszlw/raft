@@ -49,8 +49,9 @@ message InstallSnapshotResp {
   uint64 term = 1;
 }
 
-// service RaftService {
-//   rpc AppendEntries (AppendEntriesReq) returns (AppendEntriesResp) {}
-//   rpc RequestVote (RequestVoteReq) returns (RequestVoteResp) {}
-//   rpc InstallSnapshot (InstallSnapshotReq) returns (InstallSnapshotResp) {}
-// }
+// Raft共识算法RPC服务
+service RaftConsensusService {
+  rpc AppendEntries (AppendEntriesReq) returns (AppendEntriesResp) {}
+  rpc RequestVote (RequestVoteReq) returns (RequestVoteResp) {}
+  rpc InstallSnapshot (InstallSnapshotReq) returns (InstallSnapshotResp) {}
+}
