@@ -2,3 +2,4 @@
 .vscode
 cmake-build-debug
 build
+third-party/rocksdb

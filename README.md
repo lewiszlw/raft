@@ -13,6 +13,7 @@ Raft 协议
 - [wenweihu86/raft-java](https://github.com/wenweihu86/raft-java)
 - [logcabin/logcabin](https://github.com/logcabin/logcabin)
 - [baidu/braft](https://github.com/baidu/braft)
+- [hezhihua/horse-raft](https://github.com/hezhihua/horse-raft)
 - [b站 MIT 6.824课程]()
 - [Google C++ 代码风格指南](https://zh-google-styleguide.readthedocs.io/en/latest/google-cpp-styleguide/)
 

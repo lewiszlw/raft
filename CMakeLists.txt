@@ -50,6 +50,63 @@ add_custom_command(
 # Include generated *.pb.h files
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
+
+# 参考 https://github.com/hezhihua/horse-raft 引入 RocksDB 依赖
+add_custom_target(thirdparty)
+include(ExternalProject)
+ 
+ #gflags 库
+set(GFLAG_ROOT          ${CMAKE_BINARY_DIR}/thirdparty/gflags-2.2.2)
+set(GFLAG_LIB_DIR       ${GFLAG_ROOT}/lib)
+set(GFLAG_INCLUDE_DIR   ${GFLAG_ROOT}/include)
+ 
+set(GFLAG_URL           https://github.com/gflags/gflags/archive/v2.2.2.tar.gz)
+#set(GFLAG_URL           https://github.com.cnpmjs.org/gflags/gflags/archive/v2.2.2.tar.gz)
+set(GFLAG_CONFIGURE     cd ${GFLAG_ROOT}/src/gflags-2.2.2 && cmake  .)
+set(GFLAG_MAKE          cd ${GFLAG_ROOT}/src/gflags-2.2.2 && make)
+set(GFLAG_INSTALL       cd ${GFLAG_ROOT}/src/gflags-2.2.2 && make install)
+
+ExternalProject_Add(gflags-2.2.2
+        URL                   ${GFLAG_URL}
+        DOWNLOAD_NAME         gflag-2.2.2.tar.gz
+        PREFIX                ${GFLAG_ROOT}
+        CONFIGURE_COMMAND     ${GFLAG_CONFIGURE}
+        BUILD_COMMAND         ${GFLAG_MAKE}
+        INSTALL_COMMAND       ${GFLAG_INSTALL}
+)
+
+add_dependencies(thirdparty gflags-2.2.2)
+
+
+ #rocksdb 库
+set(ROCKSDB_ROOT          ${CMAKE_BINARY_DIR}/thirdparty/rocksdb)
+set(ROCKSDB_LIB_DIR       ${ROCKSDB_ROOT}/lib)
+set(ROCKSDB_INCLUDE_DIR   ${ROCKSDB_ROOT}/include)
+ 
+set(ROCKSDB_URL           https://github.com/facebook/rocksdb/archive/v6.14.5.tar.gz)
+#set(ROCKSDB_URL           https://github.com.cnpmjs.org/facebook/rocksdb/archive/v6.14.5.tar.gz)
+#set(ROCKSDB_CONFIGURE     cd ${ROCKSDB_ROOT}/src/rocksdb-6.14.5 && cmake -D CMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/third-party/rocksdb -DWITH_SNAPPY=ON .)
+set(ROCKSDB_CONFIGURE     cd ${ROCKSDB_ROOT}/src/rocksdb-6.14.5 )
+set(ROCKSDB_MAKE          cd ${ROCKSDB_ROOT}/src/rocksdb-6.14.5 && make static_lib)
+set(ROCKSDB_INSTALL       cd ${ROCKSDB_ROOT}/src/rocksdb-6.14.5 && make PREFIX=${CMAKE_SOURCE_DIR}/third-party/rocksdb  install)
+
+ExternalProject_Add(rocksdb-6.14.5
+        URL                   ${ROCKSDB_URL}
+        DOWNLOAD_NAME         rocksdb-6.14.5.tar.gz
+        PREFIX                ${ROCKSDB_ROOT}
+        CONFIGURE_COMMAND     ${ROCKSDB_CONFIGURE}
+        BUILD_COMMAND         ${ROCKSDB_MAKE}
+        INSTALL_COMMAND       ${ROCKSDB_INSTALL}
+        BUILD_ALWAYS          1
+)
+
+add_dependencies(thirdparty rocksdb-6.14.5)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third-party/rocksdb/include)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/third-party/rocksdb/lib)
+add_executable(rocksdb_test src/rocksdb_test.cpp)
+target_link_libraries(rocksdb_test rocksdb ${CMAKE_DL_LIBS})  # https://stackoverflow.com/a/55386760
+
 # raft_grpc_proto
 add_library(raft_grpc_proto
   ${raft_grpc_srcs}
