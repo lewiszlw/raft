@@ -119,7 +119,7 @@ target_link_libraries(raft_grpc_proto
   ${_PROTOBUF_LIBPROTOBUF})
 
 # raft
-add_library(raft src/raft_consensus_service.cc)
+add_library(raft src/raft_consensus_service.cc src/raft_node.cc src/raft_peer.cc)
 target_include_directories(raft PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(raft
     raft_grpc_proto
@@ -127,10 +127,28 @@ target_link_libraries(raft
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
 
-# example_server
-add_executable(example_server example/example_server.cc)
-target_include_directories(example_server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(example_server
+# example_server1
+add_executable(example_server1 example/example_server1.cc)
+target_include_directories(example_server1 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(example_server1
+    raft
+    raft_grpc_proto
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})
+# example_server2
+add_executable(example_server2 example/example_server2.cc)
+target_include_directories(example_server2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(example_server2
+    raft
+    raft_grpc_proto
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF})
+# example_server3
+add_executable(example_server3 example/example_server3.cc)
+target_include_directories(example_server3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(example_server3
     raft
     raft_grpc_proto
     ${_REFLECTION}

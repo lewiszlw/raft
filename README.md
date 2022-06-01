@@ -14,7 +14,7 @@ Raft 协议
 - [logcabin/logcabin](https://github.com/logcabin/logcabin)
 - [baidu/braft](https://github.com/baidu/braft)
 - [hezhihua/horse-raft](https://github.com/hezhihua/horse-raft)
-- [b站 MIT 6.824课程]()
+- [b站 MIT 6.824课程](https://www.bilibili.com/video/BV1R7411t71W)
 - [Google C++ 代码风格指南](https://zh-google-styleguide.readthedocs.io/en/latest/google-cpp-styleguide/)
 
 ## 问题
