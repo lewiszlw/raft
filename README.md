@@ -2,7 +2,7 @@
 Raft 协议的 C++ 实现。
 
 Raft 协议
-- 中文：https://github.com/maemual/raft-zh_cn/blob/master/raft-zh_cn.md
+- 中文：[maemual/raft-zh_cn](https://github.com/maemual/raft-zh_cn/blob/master/raft-zh_cn.md)、doc/raft-zh_cn.pdf
 - 英文：doc/raft.pdf
 - https://raft.github.io/
 

@@ -118,21 +118,30 @@ target_link_libraries(raft_grpc_proto
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF})
 
-add_executable(proto_test src/proto_test.cpp)
-target_link_libraries(proto_test 
+# raft
+add_library(raft src/raft_consensus_service.cc)
+target_include_directories(raft PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(raft
     raft_grpc_proto
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
 
-add_executable(raft_consensus_server src/raft_consensus_server.cpp)
-target_link_libraries(raft_consensus_server 
+# example_server
+add_executable(example_server example/example_server.cc)
+target_include_directories(example_server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(example_server
+    raft
     raft_grpc_proto
     ${_REFLECTION}
     ${_GRPC_GRPCPP}
     ${_PROTOBUF_LIBPROTOBUF})
-add_executable(raft_consensus_client src/raft_consensus_client.cpp)
-target_link_libraries(raft_consensus_client 
+
+# example_client
+add_executable(example_client example/example_client.cc)
+target_include_directories(example_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(example_client
+    raft
     raft_grpc_proto
     ${_REFLECTION}
     ${_GRPC_GRPCPP}

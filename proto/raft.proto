@@ -56,7 +56,7 @@ message InstallSnapshotResp {
 
 // Raft共识算法RPC服务
 service RaftConsensusService {
-  rpc AppendEntries (AppendEntriesReq) returns (AppendEntriesResp) {}
-  rpc RequestVote (RequestVoteReq) returns (RequestVoteResp) {}
-  rpc InstallSnapshot (InstallSnapshotReq) returns (InstallSnapshotResp) {}
+  rpc AppendEntries (AppendEntriesReq) returns (AppendEntriesResp) {}          // 附加日志条目RPC
+  rpc RequestVote (RequestVoteReq) returns (RequestVoteResp) {}                // 请求选票RPC
+  rpc InstallSnapshot (InstallSnapshotReq) returns (InstallSnapshotResp) {}    // 安装快照RPC
 }
