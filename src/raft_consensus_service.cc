@@ -75,8 +75,13 @@ std::unique_ptr<raft::RaftConsensusService::Stub> RaftConsensusServiceClient::Ne
 /******************************************************************************
  * Raft 节点通信 RPC 服务实现
  ******************************************************************************/
-RaftConsensusServiceImpl::RaftConsensusServiceImpl() {
+RaftConsensusServiceImpl::RaftConsensusServiceImpl(std::function<void(const raft::AppendEntriesReq*, raft::AppendEntriesResp*)> handle_append_entries,
+                                                    std::function<void(const raft::RequestVoteReq*, raft::RequestVoteResp*)> handle_request_vote,
+                                                    std::function<void(const raft::InstallSnapshotReq*, raft::InstallSnapshotResp*)> handle_install_snapshot) {
     std::cout << "New RaftConsensusServiceImpl" << std::endl;
+    handle_append_entries_ = handle_append_entries;
+    handle_request_vote_ = handle_request_vote;
+    handle_install_snapshot_ = handle_install_snapshot;
 }
 
 RaftConsensusServiceImpl::~RaftConsensusServiceImpl() {
@@ -84,23 +89,20 @@ RaftConsensusServiceImpl::~RaftConsensusServiceImpl() {
 }
 
 grpc::Status RaftConsensusServiceImpl::AppendEntries(grpc::ServerContext* context, const AppendEntriesReq* request, AppendEntriesResp* response) {
-    // TODO 实现 AppendEntries RPC
     std::cout << "RaftConsensusServiceImpl.AppendEntries: " << request->leaderid() << std::endl;
-    response->set_term(2);
+    handle_append_entries_(request, response);
     return grpc::Status::OK;
 }
 
 grpc::Status RaftConsensusServiceImpl::RequestVote(grpc::ServerContext* context, const RequestVoteReq* request, RequestVoteResp* response) {
-    // TODO 实现 RequestVote RPC
     std::cout << "RequestVoteReq: " << request->candidateid() << std::endl;
-    response->set_term(2);
+    handle_request_vote_(request, response);
     return grpc::Status::OK;
 }
 
 grpc::Status RaftConsensusServiceImpl::InstallSnapshot(grpc::ServerContext* context, const InstallSnapshotReq* request, InstallSnapshotResp* response) {
-    // TODO 实现 InstallSnapshot RPC
     std::cout << "InstallSnapshotReq: " << request->leaderid() << std::endl;
-    response->set_term(2);
+    handle_install_snapshot_(request, response);
     return grpc::Status::OK;
 }
 
@@ -108,8 +110,9 @@ grpc::Status RaftConsensusServiceImpl::InstallSnapshot(grpc::ServerContext* cont
 /******************************************************************************
  * Raft 节点通信 RPC 服务端
  ******************************************************************************/
-RaftConsensusServiceServer::RaftConsensusServiceServer(raft::Server server) : server_(server) {
+RaftConsensusServiceServer::RaftConsensusServiceServer(raft::Server local_server, raft::RaftConsensusServiceImpl* service_impl) : local_server_(local_server) {
     std::cout << "New RaftConsensusServiceServer" << std::endl;
+    service_impl_ = service_impl;
 }
 
 RaftConsensusServiceServer::~RaftConsensusServiceServer() {
@@ -117,19 +120,17 @@ RaftConsensusServiceServer::~RaftConsensusServiceServer() {
 }
 
 void RaftConsensusServiceServer::Start() {
-    static RaftConsensusServiceImpl service;
-
     grpc::EnableDefaultHealthCheckService(true);
     grpc::reflection::InitProtoReflectionServerBuilderPlugin();
     grpc::ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
-    builder.AddListeningPort(server_.address(), grpc::InsecureServerCredentials());
+    builder.AddListeningPort(local_server_.address(), grpc::InsecureServerCredentials());
     // Register "service" as the instance through which we'll communicate with
     // clients. In this case it corresponds to an *synchronous* service.
-    builder.RegisterService(&service);
+    builder.RegisterService(service_impl_);
     // Finally assemble the server.
     grpc_server_ = builder.BuildAndStart();
-    std::cout << "Server listening on " << server_.address() << std::endl;
+    std::cout << "Server listening on " << local_server_.address() << std::endl;
 
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
@@ -137,7 +138,7 @@ void RaftConsensusServiceServer::Start() {
 }
 
 void RaftConsensusServiceServer::Stop() {
-    std::cout << "Server shutdown on " << server_.address() << std::endl;
+    std::cout << "Server shutdown on " << local_server_.address() << std::endl;
     grpc_server_->Shutdown();
 }
 

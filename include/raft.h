@@ -9,24 +9,28 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/grpcpp.h>
 #include "raft.grpc.pb.h"
+#include <thread>
+#include <chrono>
 
 namespace raft {
 
-enum class RaftNodeState {
-    UKNOWN,
-    FOLLOWER,
-    CANDIDATE,
-    LEADER
-};
+// Raft 节点状态枚举类
+enum class RaftNodeState { UKNOWN, FOLLOWER, CANDIDATE, LEADER };
 
-// 定时器
-class Timer {
-public:
-    Timer();
-    ~Timer();
-    void Schedule(uint64_t nanoseconds);
-    void Deschedule();
-private:
+// Raft 定时器
+class RaftTimer {
+    public:
+        RaftTimer();
+        ~RaftTimer();
+        void Schedule(uint32_t timeout_ms, std::function<void()> callback);
+        void Deschedule();
+        void Reset(uint32_t timeout_ms);
+    private:
+        std::function<void()> callback_;
+        std::thread thread_;
+        bool is_running_;
+        uint32_t timeout_ms_;
+        std::chrono::system_clock::time_point next_timeout_at_;
 };
 
 // Raft 节点
@@ -59,22 +63,29 @@ class RaftConsensusServiceClient {
 // Raft 节点通信 RPC 服务实现
 class RaftConsensusServiceImpl final : public raft::RaftConsensusService::Service {
     public:
-        RaftConsensusServiceImpl();
+        RaftConsensusServiceImpl(std::function<void(const raft::AppendEntriesReq*, raft::AppendEntriesResp*)> handle_append_entries,
+                                std::function<void(const raft::RequestVoteReq*, raft::RequestVoteResp*)> handle_request_vote,
+                                std::function<void(const raft::InstallSnapshotReq*, raft::InstallSnapshotResp*)> handle_install_snapshot);
         ~RaftConsensusServiceImpl();
         grpc::Status AppendEntries(grpc::ServerContext* context, const raft::AppendEntriesReq* request, raft::AppendEntriesResp* response) override;
         grpc::Status RequestVote(grpc::ServerContext* context, const raft::RequestVoteReq* request, raft::RequestVoteResp* response) override;
         grpc::Status InstallSnapshot(grpc::ServerContext* context, const raft::InstallSnapshotReq* request, raft::InstallSnapshotResp* response) override;
+    private:
+        std::function<void(const raft::AppendEntriesReq*, raft::AppendEntriesResp*)> handle_append_entries_;
+        std::function<void(const raft::RequestVoteReq*, raft::RequestVoteResp*)> handle_request_vote_;
+        std::function<void(const raft::InstallSnapshotReq*, raft::InstallSnapshotResp*)> handle_install_snapshot_;
 };
 // Raft 节点通信 RPC 服务端
 class RaftConsensusServiceServer {
     public:
-        RaftConsensusServiceServer(raft::Server server);
+        RaftConsensusServiceServer(raft::Server local_server, raft::RaftConsensusServiceImpl* service_impl);
         ~RaftConsensusServiceServer();
         void Start();
         void Stop();
-        raft::Server server_;
+        raft::Server local_server_;
         std::unique_ptr<grpc::Server> grpc_server_;
     private:
+        raft::RaftConsensusServiceImpl* service_impl_;
 };
 
 
@@ -96,23 +107,35 @@ class RaftNode {
         ~RaftNode();
         void Start();
         void Stop();
-        void AppendEntries();
-        void RequestVote();
-        void InstallSnapshot();
+
+        void AppendEntries();                                                                     // leader附加日志
+        void RequestVote();                                                                       // candidate请求投票
+        void InstallSnapshot();                                                                   // leader安装快照
+
+        void HandleAppendEntries(const AppendEntriesReq* request, AppendEntriesResp* response);
+        void HandleRequestVote(const RequestVoteReq* request, RequestVoteResp* response);
+        void HandleInstallSnapshot(const InstallSnapshotReq* request, InstallSnapshotResp* response);
+
         void StepDown();                                                                          // 回退为Follower
-        raft::Server server_;                                                                     // 服务器信息
+
+        void HandleElectionTimeout();                                                             // 处理选举超时
+        void HandleHeartbeatTimeout();                                                            // 处理心跳超时
+        void HandleSnapshotTimeout();                                                             // 处理快照超时
+
+        raft::Server local_server_;                                                               // 服务器信息
         uint64_t current_term_;                                                                   // 当前任期
     private:
         RaftNodeState state_;                                                                     // 本节点的状态
-        // Timer election_timer_;                                                                    // 选举定时器
-        // Timer heartbeat_timer_;                                                                   // 心跳定时器
-        // Timer snapshot_timer_;                                                                    // 快照定时器
+        RaftTimer* election_timer_;                                                                // 选举定时器
+        RaftTimer* heartbeat_timer_;                                                               // 心跳定时器
+        RaftTimer* snapshot_timer_;                                                                // 快照定时器
         uint64_t voted_for_;                                                                      // 当前选举的候选人ID
         uint64_t commit_index_;                                                                   // 当前已提交的日志索引
         uint64_t last_applied_index_;                                                             // 当前已应用的日志索引
         std::vector<RaftPeer> peers_;                                                             // 节点列表
         // RaftStateMachine raft_state_machine_;
         RaftConsensusServiceClient* raft_consensus_service_client_;
+        RaftConsensusServiceImpl* raft_consensus_service_impl_;
         RaftConsensusServiceServer* raft_consensus_service_server_;
 };
 

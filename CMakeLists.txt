@@ -119,7 +119,7 @@ target_link_libraries(raft_grpc_proto
   ${_PROTOBUF_LIBPROTOBUF})
 
 # raft
-add_library(raft src/raft_consensus_service.cc src/raft_node.cc src/raft_peer.cc)
+add_library(raft src/raft_consensus_service.cc src/raft_node.cc src/raft_peer.cc src/raft_timer.cc)
 target_include_directories(raft PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(raft
     raft_grpc_proto
