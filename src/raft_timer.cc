@@ -6,7 +6,7 @@ namespace raft {
 
 
 RaftTimer::RaftTimer() {
-    std::cout << "New RaftTimer" << std::endl;
+    //std::cout << "New RaftTimer" << std::endl;
     is_running_ = false;
     timeout_ms_ = 0;
     next_timeout_at_ = std::chrono::system_clock::now() + std::chrono::hours(INT_MAX);

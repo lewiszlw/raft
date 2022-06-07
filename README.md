@@ -30,3 +30,5 @@ Raft 协议
 **2.如果leader接收客户端的请求量很大，而某些follower无法及时执行日志，导致日志堆积，最终follower可能因内存不足而crash，这种情况如何优化？**
 
 **3.如果leader网络出现单向故障，比如leader可以发出请求但无法接收请求，这样导致leader可以往followers发送心跳，但leader无法收到客户端请求，整个集群不可用，而且leader往follower发送的心跳会压制follower选举出新的leader，这种情况如何解决？**
+
+**4.假如某个节点网络不可用，此节点不断执行选举-选举超时，term会增加到很大，会有什么影响？如何优化？**

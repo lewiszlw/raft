@@ -11,13 +11,17 @@
 #include "raft.grpc.pb.h"
 #include <thread>
 #include <chrono>
+#include <deque>
 
 namespace raft {
 
 // Raft 节点状态枚举类
 enum class RaftNodeState { UKNOWN, FOLLOWER, CANDIDATE, LEADER };
 
-// Raft 定时器
+
+/******************************************************************************************
+ *  Raft 计时器
+ * ****************************************************************************************/
 class RaftTimer {
     public:
         RaftTimer();
@@ -33,73 +37,109 @@ class RaftTimer {
         std::chrono::system_clock::time_point next_timeout_at_;
 };
 
-// Raft 节点
-class RaftPeer {
+// Raft 日志
+class RaftLog {
     public:
-        RaftPeer(raft::Server server);
-        ~RaftPeer();
-        raft::Server server_;                                                                     // 服务器信息
-        uint64_t next_index_;                                                                     // 下一个日志索引
-        uint64_t match_index_;                                                                    // 已经匹配的日志索引
-        bool vote_granted_;                                                                       // 是否投票给本节点
+        RaftLog();
+        ~RaftLog();
+        void Append(const AppendEntriesReq* request);
+        void Append(const LogEntry& new_entry);
+        LogEntry* Get(uint64_t index);
+        LogEntry* Get(uint64_t index, uint64_t term);
+        uint64_t GetLastIndex();
+        uint64_t GetLastTerm();
+        //LogEntry& GetLastEntry();
+        //uint64_t GetCommittedIndex();
+        //void SetCommittedIndex(uint64_t index);
     private:
+        std::deque<LogEntry> entries_;
+        uint64_t start_index_;
+        //uint64_t committed_index_;
 };
 
 
 /******************************************************************************************
- *  RaftConsensusService 节点通信 RPC
+ *  Raft 节点通信 RPC
  * ****************************************************************************************/
 // Raft 节点通信 RPC 客户端
 class RaftConsensusServiceClient {
     public:
         RaftConsensusServiceClient();
         ~RaftConsensusServiceClient();
-        raft::AppendEntriesResp AppendEntries(const raft::AppendEntriesReq request, const raft::Server server);
-        raft::RequestVoteResp RequestVote(const raft::RequestVoteReq request, const raft::Server server);
-        raft::InstallSnapshotResp InstallSnapshot(const raft::InstallSnapshotReq request, const raft::Server server);
+        raft::AppendEntriesResp AppendEntries(const AppendEntriesReq request, const Server server);
+        raft::RequestVoteResp RequestVote(const RequestVoteReq request, const Server server);
+        raft::InstallSnapshotResp InstallSnapshot(const InstallSnapshotReq request, const Server server);
     private:
-        std::unique_ptr<raft::RaftConsensusService::Stub> NewStub(const raft::Server server);
+        std::unique_ptr<raft::RaftConsensusService::Stub> NewStub(const Server server);
 };
 // Raft 节点通信 RPC 服务实现
 class RaftConsensusServiceImpl final : public raft::RaftConsensusService::Service {
     public:
-        RaftConsensusServiceImpl(std::function<void(const raft::AppendEntriesReq*, raft::AppendEntriesResp*)> handle_append_entries,
-                                std::function<void(const raft::RequestVoteReq*, raft::RequestVoteResp*)> handle_request_vote,
-                                std::function<void(const raft::InstallSnapshotReq*, raft::InstallSnapshotResp*)> handle_install_snapshot);
+        RaftConsensusServiceImpl(std::function<void(const AppendEntriesReq*, AppendEntriesResp*)> handle_append_entries,
+                                std::function<void(const RequestVoteReq*, RequestVoteResp*)> handle_request_vote,
+                                std::function<void(const InstallSnapshotReq*, InstallSnapshotResp*)> handle_install_snapshot);
         ~RaftConsensusServiceImpl();
         grpc::Status AppendEntries(grpc::ServerContext* context, const raft::AppendEntriesReq* request, raft::AppendEntriesResp* response) override;
         grpc::Status RequestVote(grpc::ServerContext* context, const raft::RequestVoteReq* request, raft::RequestVoteResp* response) override;
         grpc::Status InstallSnapshot(grpc::ServerContext* context, const raft::InstallSnapshotReq* request, raft::InstallSnapshotResp* response) override;
     private:
-        std::function<void(const raft::AppendEntriesReq*, raft::AppendEntriesResp*)> handle_append_entries_;
-        std::function<void(const raft::RequestVoteReq*, raft::RequestVoteResp*)> handle_request_vote_;
-        std::function<void(const raft::InstallSnapshotReq*, raft::InstallSnapshotResp*)> handle_install_snapshot_;
+        std::function<void(const AppendEntriesReq*, AppendEntriesResp*)> handle_append_entries_;
+        std::function<void(const RequestVoteReq*, RequestVoteResp*)> handle_request_vote_;
+        std::function<void(const InstallSnapshotReq*, InstallSnapshotResp*)> handle_install_snapshot_;
 };
 // Raft 节点通信 RPC 服务端
 class RaftConsensusServiceServer {
     public:
-        RaftConsensusServiceServer(raft::Server local_server, raft::RaftConsensusServiceImpl* service_impl);
+        RaftConsensusServiceServer(Server* local_server, RaftConsensusServiceImpl* service_impl);
         ~RaftConsensusServiceServer();
         void Start();
         void Stop();
-        raft::Server local_server_;
+        Server* local_server_;
         std::unique_ptr<grpc::Server> grpc_server_;
     private:
         raft::RaftConsensusServiceImpl* service_impl_;
 };
 
 
+/******************************************************************************************
+ *  Raft 状态机
+ * ****************************************************************************************/
 // Raft 状态机
 class RaftStateMachine {
     public:
         RaftStateMachine();
         ~RaftStateMachine();
-        void Apply();
+        void Apply(LogEntry log_entry);
         void WriteSnapshot();
         void ReadSnapshot();
 };
 
 
+/******************************************************************************************
+ *  Raft 节点
+ * ****************************************************************************************/
+// Raft 其他服务器节点
+class RaftPeer {
+    public:
+        RaftPeer(Server server);
+        ~RaftPeer();
+        Server server_;                                                                           // 服务器信息
+        uint64_t next_index_;                                                                     // 发送到该服务器的下一个日志条目的索引
+        uint64_t match_index_;                                                                    // 已知的已经复制到该服务器的最高日志条目的索引
+        bool vote_granted_;                                                                       // 是否投票给本节点
+        bool is_leader_;                                                                          // 是否为 leader
+    private:
+};
+class RaftPeerManager {
+    public:
+        RaftPeerManager();
+        ~RaftPeerManager();
+        void AddPeers(std::vector<Server> servers, uint64_t next_index);
+        RaftPeer* GetLeader();
+        std::vector<RaftPeer>& GetPeers();
+    private:
+        std::vector<RaftPeer> peers_;
+};
 // Raft 本实例节点
 class RaftNode {
     public:
@@ -107,6 +147,8 @@ class RaftNode {
         ~RaftNode();
         void Start();
         void Stop();
+
+        void Replicate(std::string data);                                                         // 客户端请求复制命令内容
 
         void AppendEntries();                                                                     // leader附加日志
         void RequestVote();                                                                       // candidate请求投票
@@ -122,17 +164,18 @@ class RaftNode {
         void HandleHeartbeatTimeout();                                                            // 处理心跳超时
         void HandleSnapshotTimeout();                                                             // 处理快照超时
 
-        raft::Server local_server_;                                                               // 服务器信息
-        uint64_t current_term_;                                                                   // 当前任期
+        Server local_server_;                                                                     // 服务器信息
+        uint64_t current_term_;                                                                   // 服务器已知最新的任期
     private:
         RaftNodeState state_;                                                                     // 本节点的状态
-        RaftTimer* election_timer_;                                                                // 选举定时器
-        RaftTimer* heartbeat_timer_;                                                               // 心跳定时器
-        RaftTimer* snapshot_timer_;                                                                // 快照定时器
+        RaftTimer* election_timer_;                                                               // 选举计时器
+        RaftTimer* heartbeat_timer_;                                                              // 心跳计时器
+        RaftTimer* snapshot_timer_;                                                               // 快照计时器
         uint64_t voted_for_;                                                                      // 当前选举的候选人ID
-        uint64_t commit_index_;                                                                   // 当前已提交的日志索引
-        uint64_t last_applied_index_;                                                             // 当前已应用的日志索引
-        std::vector<RaftPeer> peers_;                                                             // 节点列表
+        uint64_t commit_index_;                                                                   // 已知已提交的最高的日志条目的索引
+        uint64_t last_applied_;                                                                   // 已经被应用到状态机的最高的日志条目的索引
+        RaftPeerManager peer_manager_;                                                            // 节点列表
+        RaftLog log_;                                                                             // 日志
         // RaftStateMachine raft_state_machine_;
         RaftConsensusServiceClient* raft_consensus_service_client_;
         RaftConsensusServiceImpl* raft_consensus_service_impl_;
